@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AWS VPC Mastery: Deep-Dive Hands-on Guide</title>
+<style>
+:root{
+  --bg:#f4f7fb;--panel:#ffffff;--ink:#0d1b2a;--mute:#5a6b80;--line:#dde4ee;
+  --acc:#0a6c91;--acc2:#d97706;--code:#0b1622;--codeink:#d6e7f4;
+  --ok:#e6f4ea;--warn:#fff3e0;--err:#fde7e9;
+  --topic1:#0a6c91;--topic2:#d97706;--topic3:#7c3aed;--topic4:#059669;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#0a1118;--panel:#13202d;--ink:#e6eef7;--mute:#9aa9bc;--line:#243749;
+    --acc:#5dc4e6;--acc2:#f0a05a;--code:#06101a;--codeink:#cfe3f3;
+    --ok:#0f2e1f;--warn:#3a2a14;--err:#3a1719}
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Inter",-apple-system,system-ui,sans-serif;display:flex}
+nav{position:sticky;top:0;height:100vh;width:280px;flex:none;overflow:auto;padding:18px 14px;border-right:1px solid var(--line);background:var(--panel);font:13px/1.45 system-ui,sans-serif}
+nav b{display:block;margin-bottom:8px;font-size:14px;color:var(--acc);letter-spacing:.3px}
+nav .group{font:600 11px/1.2 system-ui;color:var(--mute);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;padding-top:8px;border-top:1px solid var(--line)}
+nav .group:first-of-type{border:0;padding:0;margin-top:0}
+nav a{display:block;padding:4px 8px;color:var(--ink);text-decoration:none;border-radius:4px;border-left:2px solid transparent}
+nav a:hover,nav a:focus-visible{background:var(--bg);border-left-color:var(--acc);outline:none}
+nav a.t1{border-left-color:var(--topic1)}
+nav a.t2{border-left-color:var(--topic2)}
+nav a.t3{border-left-color:var(--topic3)}
+nav a.t4{border-left-color:var(--topic4)}
+main{max-width:920px;padding:30px 28px 80px;min-width:0;flex:1}
+h1{font:700 2.1rem/1.15 system-ui;margin:0 0 6px;color:var(--ink)}
+h1 small{font:400 .5em system-ui;color:var(--mute);display:block;margin-top:6px}
+h2{font:700 1.55rem/1.25 system-ui;margin:48px 0 8px;padding:18px 0 6px;border-top:3px solid var(--acc);color:var(--acc)}
+h2 .num{display:inline-block;background:var(--acc);color:#fff;font:700 .55em/1.8 system-ui;padding:2px 9px;border-radius:4px;margin-right:10px;vertical-align:middle}
+h3{font:700 1.15rem/1.3 system-ui;margin:24px 0 6px;color:var(--ink)}
+h4{font:600 1rem/1.3 system-ui;margin:18px 0 4px;color:var(--acc2)}
+p,li{max-width:78ch}
+.lead{color:var(--mute);font-size:1.05em;margin-bottom:18px}
+strong{color:var(--ink)}
+code{font-family:"JetBrains Mono",ui-monospace,Consolas,monospace;font-size:.88em}
+p code,li code,td code{background:var(--line);padding:1px 6px;border-radius:3px;color:var(--ink)}
+pre{position:relative;background:var(--code);color:var(--codeink);padding:14px 16px;border-radius:6px;overflow-x:auto;font:12.5px/1.55 "JetBrains Mono",ui-monospace,monospace;margin:10px 0 14px;border-left:3px solid var(--acc)}
+.cp{position:absolute;top:6px;right:6px;font:11px system-ui;padding:3px 9px;border:1px solid #456;background:rgba(255,255,255,.08);color:var(--codeink);border-radius:4px;cursor:pointer}
+.cp:hover{background:rgba(255,255,255,.18)}
+.box{padding:12px 16px;border-left:4px solid var(--acc2);background:var(--warn);border-radius:0 6px 6px 0;margin:14px 0;font-size:.94em}
+.box.ok{border-color:#2e8b57;background:var(--ok)}
+.box.err{border-color:#c0392b;background:var(--err)}
+.box b{color:var(--ink)}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:10px 0 16px;font:13.5px/1.5 system-ui}
+th,td{border:1px solid var(--line);padding:7px 11px;text-align:left;vertical-align:top}
+th{background:var(--panel);font-weight:600}
+.diag{white-space:pre;font:12.5px/1.4 "JetBrains Mono",ui-monospace,monospace;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--acc);padding:14px 16px;border-radius:6px;overflow-x:auto;margin:10px 0}
+.kw{background:linear-gradient(90deg,var(--acc),transparent 60%);color:#fff;padding:1px 6px;border-radius:3px;font-size:.85em;font-weight:600}
+.bullet-2{margin-left:18px}
+.bullet-3{margin-left:36px;font-size:.94em;color:var(--mute)}
+.tag{display:inline-block;background:var(--line);color:var(--ink);padding:1px 7px;border-radius:3px;font:600 11px system-ui;margin-right:4px}
+.tag.acc{background:var(--acc);color:#fff}
+.tag.warn{background:var(--acc2);color:#fff}
+.tag.ok{background:#2e8b57;color:#fff}
+.checklist{list-style:none;padding-left:0}
+.checklist li{padding:5px 0 5px 24px;position:relative}
+.checklist li:before{content:"✓";position:absolute;left:4px;top:5px;color:#2e8b57;font-weight:700}
+.warn-list{list-style:none;padding-left:0}
+.warn-list li{padding:5px 0 5px 24px;position:relative}
+.warn-list li:before{content:"⚠";position:absolute;left:4px;top:5px;color:var(--acc2);font-weight:700}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 14px;margin:8px 0;font-size:.95em}
+.step b{color:var(--acc)}
+@media(max-width:880px){body{display:block}nav{position:static;height:auto;width:auto}main{padding:20px 14px 60px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<nav aria-label="Sections">
+<b>AWS VPC Deep-Dive</b>
+<div class="group">Foundations</div>
+<a href="#s0">0. Mental Model & Setup</a>
+<a href="#s1">1. VPC & CIDR Planning</a>
+<a href="#s2">2. Subnets Deep-Dive</a>
+<div class="group">Internet Layer</div>
+<a class="t1" href="#s3">3. Internet Gateway (IGW)</a>
+<a class="t2" href="#s4">4. NAT Gateway</a>
+<a class="t3" href="#s5">5. Egress-Only IGW & Carrier GW</a>
+<div class="group">Security</div>
+<a href="#s6">6. Security Groups vs NACLs</a>
+<a href="#s7">7. Reachability & Flow Logs</a>
+<div class="group">Connectivity</div>
+<a href="#s8">8. VPC Endpoints & PrivateLink</a>
+<a href="#s9">9. VPC Peering</a>
+<a href="#s10">10. Transit Gateway</a>
+<a href="#s11">11. Site-to-Site VPN & DX</a>
+<a href="#s12">12. Client VPN & Verified Access</a>
+<div class="group">Advanced</div>
+<a class="t4" href="#s13">13. Network Firewall & DNS FW</a>
+<a href="#s14">14. IPAM, Lattice, Cloud WAN</a>
+<a href="#s15">15. IPv6, DHCP, Prefix Lists</a>
+<a href="#s16">16. Observability & Troubleshooting</a>
+<a href="#s17">17. Cleanup, IaC & Interview</a>
+</nav>
+
+<main>
+<h1>AWS VPC: from zero to expert <small>Deep-dive, real-time scenarios, hands-on labs</small></h1>
+<p class="lead">Every topic follows the same loop: <span class="kw">Concept</span> → <span class="kw">Real-time use cases</span> → <span class="kw">Console demo</span> → <span class="kw">CLI lab</span> → <span class="kw">Common issues</span> → <span class="kw">Clean-up</span>. Region: <code>us-east-1</code>. Prices and quotas are approximate — verify on AWS docs before leaving anything running.</p>
+
+<div class="box"><b>One-time setup:</b> use an IAM user/role with admin rights in a sandbox account. Install <code>AWS CLI v2</code>, run <code>aws configure</code>, set a billing alarm at $5. Export shared variables at the top of every shell: <code>export AWS_REGION=us-east-1 VPC_ID=... CIDR=10.0.0.0/16</code>.</div>
+
+<!-- ============================ 0 ============================ -->
+<h2 id="s0"><span class="num">0</span>Mental Model</h2>
+<p>A VPC is your <b>logically isolated, private network</b> inside <b>one AWS Region</b>. It spans <b>all Availability Zones</b> of that Region. <b>Subnets</b> live in <b>exactly one AZ</b>. Everything else (IGW, NAT, route tables, SGs, NACLs) decides who can talk to whom.</p>
+<div class="diag">                              INTERNET
+                                  |
+                            [Internet Gateway]    (free, VPC-scoped, HA by AWS)
+                                  |
+                          Public Route Table
+                          0.0.0.0/0 -> igw-xxx
+                                  |
+   ┌───────────────────── VPC 10.0.0.0/16 (us-east-1) ─────────────────────────┐
+   │                                                                       │
+   │  AZ-a (use1-az1)              AZ-b (use1-az2)                          │
+   │  ├─ public   10.0.1.0/24      ├─ public   10.0.2.0/24    (ALB, NAT)  │
+   │  ├─ private  10.0.11.0/24     ├─ private  10.0.12.0/24   (apps)      │
+   │  └─ data     10.0.21.0/24     └─ data     10.0.22.0/24   (RDS)       │
+   │                                                                       │
+   │  Private RT: 0.0.0.0/0 -> nat-a (in AZ-a)        [one NAT per AZ]    │
+   └───────────────────────────────────────────────────────────────────────┘</div>
+
+<h3>Rules to memorize (memorize these cold)</h3>
+<table>
+<tr><th>Rule</th><th>Why it matters</th></tr>
+<tr><td>A subnet is "public" only if its route table has a route to an <b>IGW</b> <i>and</i> instances have a public/EIP</td><td>No checkbox exists for "public subnet"</td></tr>
+<tr><td>AWS reserves <b>5 IPs per subnet</b> (first 4 + last 1). A /28 → <b>11</b> usable, not 16</td><td>Real capacity vs. math capacity</td></tr>
+<tr><td>Most specific route wins (<b>longest prefix match</b>); the <code>local</code> route is permanent and cannot be deleted</td><td>Predicts every routing outcome</td></tr>
+<tr><td>SG = <b>stateful, allow-only</b> &nbsp;|&nbsp; NACL = <b>stateless, allow + deny</b>, numbered, first-match</td><td>Classic exam + interview</td></tr>
+<tr><td>VPC peering is <b>not transitive</b>; Transit Gateway is the hub fix</td><td>Drives hub-and-spoke</td></tr>
+<tr><td>Subnet CIDRs cannot overlap inside a VPC; <b>overlapping VPCs cannot peer</b></td><td>Plan address space company-wide (use IPAM)</td></tr>
+</table>
+
+<!-- ============================ 1 ============================ -->
+<h2 id="s1"><span class="num">1</span>VPC & CIDR Planning</h2>
+<h3>Concept</h3>
+<p>A VPC has a primary IPv4 CIDR from <code>/28</code> to <code>/16</code>, plus up to 4 secondary CIDRs and optional IPv6. Use <b>RFC 1918</b> private space: <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code>. Reserve a /16 per environment with a different second octet (dev <code>10.10.0.0/16</code>, stage <code>10.20.0.0/16</code>, prod <code>10.30.0.0/16</code>) so peering/VPN remain possible forever.</p>
+<h4>Real-time use cases</h4>
+<ul>
+<li>Multi-account AWS Organization: each account gets its own VPC, but all VPCs must NOT overlap → IPAM enforces this.</li>
+<li>M&A: new company's VPC may have <code>10.50.0.0/16</code>; you remap your own to <code>10.60.0.0/16</code> to peer without conflict.</li>
+<li>Hybrid: on-prem <code>192.168.0.0/16</code> ⇒ <b>never</b> use that for VPC CIDR, or your VPN will silently fail.</li>
+</ul>
+<h4>Console</h4>
+<ol>
+<li>VPC console → <b>Your VPCs</b> → <b>Create VPC</b>.</li>
+<li>Choose <b>VPC only</b> (you'll build every piece by hand for learning).</li>
+<li>Name <code>lab-vpc</code>, IPv4 CIDR <code>10.0.0.0/16</code>, no IPv6, tenancy <i>Default</i>.</li>
+<li>After creation: <b>Actions → Edit VPC settings → Enable DNS hostnames</b>. (DNS resolution is on by default.)</li>
+</ol>
+<h4>CLI</h4>
+<pre>VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 \
+  --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=lab-vpc}]' \
+  --query Vpc.VpcId --output text)
+aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames
+aws ec2 describe-vpcs --vpc-ids $VPC_ID --query 'Vpcs[0].{Id:VpcId,Cidr:CidrBlock,State:State}'</pre>
+<div class="box"><b>Quota:</b> 5 VPCs/Region default (raisable). The <b>default VPC</b> (<code>172.31.0.0/16</code>) exists in every Region. Don't run production in it — it's shared with other users and easy to misconfigure.</div>
+<h4>Real-time issues you'll hit</h4>
+<ul class="warn-list">
+<li>"CIDR overlaps with existing VPC" → can't peer → must use a new range or NAT/VPN.</li>
+<li>Forgot DNS hostnames → RDS endpoints don't resolve inside the VPC.</li>
+<li>Forgot DNS support → Route 53 Resolver endpoints don't work.</li>
+</ul>
+
+<!-- ============================ 2 ============================ -->
+<h2 id="s2"><span class="num">2</span>Subnets Deep-Dive</h2>
+<h3>Concept</h3>
+<p>A subnet = <b>1 AZ</b> + <b>1 CIDR slice of the VPC</b>. The 5 reserved IPs are:
+<code>.0</code> network, <code>.1</code> VPC router, <code>.2</code> DNS (AmazonProvidedDNS), <code>.3</code> future use, <code>.255</code> broadcast (unused but reserved by AWS). Always design for <b>2× growth per AZ</b>.</p>
+<h4>Plan: 2 AZs × 3 tiers</h4>
+<table><tr><th>Tier</th><th>AZ-a</th><th>AZ-b</th><th>Use</th></tr>
+<tr><td>public</td><td>10.0.1.0/24</td><td>10.0.2.0/24</td><td>ALB, NAT, bastion</td></tr>
+<tr><td>private (app)</td><td>10.0.11.0/24</td><td>10.0.12.0/24</td><td>App servers, ECS tasks</td></tr>
+<tr><td>data</td><td>10.0.21.0/24</td><td>10.0.22.0/24</td><td>RDS, ElastiCache, EFS</td></tr>
+</table>
+<h4>CLI</h4>
+<pre>mk(){ aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block $1 --availability-zone $2 \
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=$3}]" \
+  --query Subnet.SubnetId --output text; }
+PUB_A=$(mk 10.0.1.0/24  us-east-1a lab-public-a)
+PUB_B=$(mk 10.0.2.0/24  us-east-1b lab-public-b)
+APP_A=$(mk 10.0.11.0/24 us-east-1a lab-app-a)
+APP_B=$(mk 10.0.12.0/24 us-east-1b lab-app-b)
+DB_A=$(mk 10.0.21.0/24  us-east-1a lab-data-a)
+DB_B=$(mk 10.0.22.0/24  us-east-1b lab-data-b)
+for s in $PUB_A $PUB_B; do aws ec2 modify-subnet-attribute --subnet-id $s --map-public-ip-on-launch; done</pre>
+<div class="box ok"><b>Verify:</b> <code>aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID --query 'Subnets[].[SubnetId,CidrBlock,AvailabilityZone,Tags[?Key==`Name`].Value|[0]]' --output table</code></div>
+
+<!-- ============================ 3 ============================ -->
+<h2 id="s3"><span class="num">3</span>Internet Gateway (IGW) + Route Tables</h2>
+<h3>Concept</h3>
+<p>The <b>Internet Gateway</b> is a <b>VPC-scoped, horizontally-scaled, redundant</b> component that connects your VPC to the public internet. It's <b>free</b>. The IGW is the "doorway"; the route table is the "map" telling traffic which door to use. <b>No checkbox makes a subnet public</b> — only a <code>0.0.0.0/0 -> igw-id</code> route does.</p>
+
+<h4>Real-time scenarios</h4>
+<ul>
+<li><b>Public ALB</b> with a public ECS service → instance needs IGW route to receive client traffic.</li>
+<li><b>Bastion host</b> for SSH → lives in public subnet, route to IGW.</li>
+<li><b>Static website on S3</b> + CloudFront → no IGW needed at all (S3 public endpoint works directly).</li>
+<li><b>AWS API Gateway</b> with private integration → needs VPC endpoint, not IGW.</li>
+</ul>
+
+<h4>Architecture diagram</h4>
+<div class="diag">   Client (1.2.3.4)
+        |
+        |   (Internet)
+        v
+   [Internet Gateway]   igw-0a1b2c3d    (attached to lab-vpc, free, HA)
+        |
+        |   0.0.0.0/0 -> igw-0a1b2c3d     (Public Route Table rtb-pub)
+        |
+   +----+-----------------------+
+   |  Subnet 10.0.1.0/24 (us-east-1a)  [public-a]            |
+   |   ec2-1  10.0.1.20  +  54.10.20.30 (EIP)                 |
+   |   ec2-2  10.0.1.21  +  54.10.20.31 (EIP)                 |
+   +----------------------------------------------------------+</div>
+
+<h4>Console steps (live demo)</h4>
+<div class="step"><b>1.</b> VPC → <b>Internet gateways</b> → <b>Create internet gateway</b> → name <code>lab-igw</code>.</div>
+<div class="step"><b>2.</b> Select it → <b>Actions → Attach to VPC</b> → choose <code>lab-vpc</code>.</div>
+<div class="step"><b>3.</b> <b>Route tables → Create route table</b> → name <code>lab-public-rt</code>, VPC = lab-vpc.</div>
+<div class="step"><b>4.</b> Open it → <b>Routes → Edit routes → Add route</b> → Destination <code>0.0.0.0/0</code>, Target = your IGW. Save.</div>
+<div class="step"><b>5.</b> <b>Subnet associations → Edit</b> → select both <code>lab-public-a</code> and <code>lab-public-b</code> → Save.</div>
+<div class="step"><b>6.</b> <b>Subnets → pick lab-public-a → Actions → Modify auto-assign IP settings → Enable "Auto-assign public IPv4"</b>.</div>
+
+<h4>CLI</h4>
+<pre>IGW_ID=$(aws ec2 create-internet-gateway --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=lab-igw}]' \
+  --query InternetGateway.InternetGatewayId --output text)
+aws ec2 attach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
+
+PUB_RT=$(aws ec2 create-route-table --vpc-id $VPC_ID \
+  --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=lab-public-rt}]' \
+  --query RouteTable.RouteTableId --output text)
+aws ec2 create-route --route-table-id $PUB_RT --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID
+for s in $PUB_A $PUB_B; do aws ec2 associate-route-table --route-table-id $PUB_RT --subnet-id $s; done
+
+# Private route tables (one per AZ for per-AZ NAT later)
+PRIV_RT_A=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=lab-priv-rt-a}]' --query RouteTable.RouteTableId --output text)
+PRIV_RT_B=$(aws ec2 create-route-table --vpc-id $VPC_ID --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=lab-priv-rt-b}]' --query RouteTable.RouteTableId --output text)
+aws ec2 associate-route-table --route-table-id $PRIV_RT_A --subnet-id $APP_A
+aws ec2 associate-route-table --route-table-id $PRIV_RT_B --subnet-id $APP_B
+aws ec2 associate-route-table --route-table-id $PRIV_RT_A --subnet-id $DB_A
+aws ec2 associate-route-table --route-table-id $PRIV_RT_B --subnet-id $DB_B</pre>
+
+<div class="box ok"><b>Verify:</b> open <code>$PUB_RT</code> → Routes tab. You must see exactly two routes: <code>10.0.0.0/16 -> local</code> and <code>0.0.0.0/0 -> igw-...</code>. Private RTs should show only the local route for now.</div>
+
+<!-- ============================================================ -->
+<!--            HANDS-ON LAB — IGW end-to-end (THE BIG ONE)        -->
+<!-- ============================================================ -->
+<h2 id="lab-igw" style="border-top-color:var(--topic1)">Lab: End-to-end Internet Gateway demo</h2>
+<p>This is the lab you asked for: create a VPC, subnets, IGW, route table. Launch a <b>Windows instance</b> accessed <b>privately</b> via Session Manager, and a <b>Linux instance</b> running <b>Apache (httpd)</b> accessed <b>privately</b>. Then break it on purpose.</p>
+
+<h3>Step A — Bootstrap environment</h3>
+<pre>export AWS_REGION=us-east-1
+export VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 \
+  --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=lab-vpc}]' \
+  --query Vpc.VpcId --output text)
+aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames
+
+PUB_A=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.1.0/24 --availability-zone us-east-1a \
+  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=lab-public-a}]' --query Subnet.SubnetId --output text)
+APP_A=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.11.0/24 --availability-zone us-east-1a \
+  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=lab-app-a}]'  --query Subnet.SubnetId --output text)
+aws ec2 modify-subnet-attribute --subnet-id $PUB_A --map-public-ip-on-launch
+
+IGW_ID=$(aws ec2 create-internet-gateway --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=lab-igw}]' \
+  --query InternetGateway.InternetGatewayId --output text)
+aws ec2 attach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
+
+PUB_RT=$(aws ec2 create-route-table --vpc-id $VPC_ID \
+  --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=lab-public-rt}]' \
+  --query RouteTable.RouteTableId --output text)
+aws ec2 create-route --route-table-id $PUB_RT --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID
+aws ec2 associate-route-table --route-table-id $PUB_RT --subnet-id $PUB_A
+
+PRIV_RT=$(aws ec2 create-route-table --vpc-id $VPC_ID \
+  --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=lab-priv-rt}]' \
+  --query RouteTable.RouteTableId --output text)
+aws ec2 associate-route-table --route-table-id $PRIV_RT --subnet-id $APP_A</pre>
+
+<h3>Step B — Security groups (one for Windows RDP-via-SSM, one for Linux HTTP)</h3>
+<pre>SG_WIN=$(aws ec2 create-security-group --group-name lab-win --description "windows" --vpc-id $VPC_ID --query GroupId --output text)
+SG_LIN=$(aws ec2 create-security-group --group-name lab-lin --description "linux http" --vpc-id $VPC_ID --query GroupId --output text)
+# Allow from YOUR IP only for safety
+MYIP=$(curl -s https://checkip.amazonaws.com)/32
+aws ec2 authorize-security-group-ingress --group-id $SG_LIN --protocol tcp --port 80 --cidr $MYIP
+# Windows: no inbound needed because we use Session Manager (SSM) over HTTPS, no 3389</pre>
+<div class="box"><b>Why no 3389?</b> AWS Session Manager tunnels a shell through the SSM endpoint — no public RDP, no public SSH, no bastion needed. The IGW and route table are still required so the SSM agent inside the instance can reach <code>ssm.us-east-1.amazonaws.com</code> and pull commands.</div>
+
+<h3>Step C — IAM role for Session Manager + SSM VPC endpoints</h3>
+<pre>cat > /tmp/ssm-trust.json &lt;&lt;'JSON'
+{ "Version":"2012-10-17","Statement":[ { "Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},
+  "Action":"sts:AssumeRole" } ] }
+JSON
+aws iam create-role --role-name SSMRole --assume-role-policy-document file:///tmp/ssm-trust.json
+aws iam attach-role-policy --role-name SSMRole --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+aws iam create-instance-profile --instance-profile-name SSMProfile
+aws iam add-role-to-instance-profile --instance-profile-name SSMProfile --role-name SSMRole
+
+# VPC endpoints for SSM (so private instance can reach SSM without NAT)
+for svc in ssm ssmmessages ec2messages; do
+  aws ec2 create-vpc-endpoint --vpc-id $VPC_ID --vpc-endpoint-type Interface \
+    --service-name com.amazonaws.$AWS_REGION.$svc --subnet-ids $APP_A $PUB_A \
+    --security-group-ids $SG_LIN --private-dns-enabled
+done</pre>
+
+<h3>Step D — Launch Linux (httpd) in private subnet</h3>
+<pre>AMI_LIN=$(aws ssm get-parameter --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
+  --query Parameter.Value --output text)
+LIN_ID=$(aws ec2 run-instances --image-id $AMI_LIN --instance-type t3.micro \
+  --subnet-id $APP_A --security-group-ids $SG_LIN \
+  --iam-instance-profile Name=SSMProfile \
+  --user-data '#!/bin/bash
+dnf install -y httpd -q
+echo "&lt;h1&gt;Hello from $(hostname -f) in $(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)&lt;/h1&gt;" > /var/www/html/index.html
+systemctl enable --now httpd' \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=lab-httpd}]' \
+  --query Instances[0].InstanceId --output text)
+echo "Linux instance: $LIN_ID — private IP only"</pre>
+
+<h3>Step E — Launch Windows in private subnet</h3>
+<pre>AMI_WIN=$(aws ssm get-parameter --name /aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base \
+  --query Parameter.Value --output text)
+WIN_ID=$(aws ec2 run-instances --image-id $AMI_WIN --instance-type t3.medium \
+  --subnet-id $APP_A --security-group-ids $SG_WIN \
+  --iam-instance-profile Name=SSMProfile \
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=lab-win}]' \
+  --query Instances[0].InstanceId --output text)
+echo "Windows instance: $WIN_ID"</pre>
+
+<h3>Step F — Connect privately with Session Manager</h3>
+<ol>
+<li>Open EC2 console → select <b>lab-httpd</b> → <b>Connect → Session Manager → Connect</b>. Browser terminal opens.</li>
+<li>Run <code>curl -s http://169.254.169.254/latest/meta-data/public-ipv4</code> → empty (correctly, no public IP).</li>
+<li>Run <code>curl -s http://checkip.amazonaws.com</code> → times out (no NAT yet — expected).</li>
+<li>Same for <b>lab-win</b>: <b>Connect → Session Manager → Connect</b>. You get a Windows PowerShell prompt over the browser. Open PowerShell and run <code>ipconfig</code> — only the private IP shows.</li>
+</ol>
+<div class="diag">   YOU (browser)
+        |
+        | HTTPS
+        v
+   [SSM endpoint] com.amazonaws.us-east-1.ssm   (Interface VPC endpoint)
+        |
+        | (inside VPC, no internet needed)
+        v
+   ec2-win  10.0.11.50   ----- SSM agent -----&gt; ssmmessages endpoint
+        |                                  &gt; ec2messages endpoint
+        |
+   ec2-lin  10.0.11.51   ----- same ----&gt;   runs httpd on :80
+                                                  ^
+                                                  |
+                                            curl from inside VPC or
+                                            forwarded via SSM port forward</div>
+
+<h3>Step G — Access the httpd page <b>privately</b></h3>
+<p>Since the instance has no public IP, you have 3 real-time options:</p>
+<ol>
+<li><b>SSM port forwarding</b> (no SSH/RDP needed):<br>
+<code>aws ssm start-session --target $LIN_ID --document-name AWS-StartPortForwardingSession --parameters '{"portNumber":["80"],"localPortNumber":["8080"]}'</code><br>
+Now open <code>http://localhost:8080</code> in your browser → see "Hello from ip-10-0-11-51..."</li>
+<li><b>Session Manager → tunnel to port 80</b> via console: <b>Connect → Session Manager → Tunnel</b> option (newer console).</li>
+<li><b>Open a bastion/jump host</b> in <code>lab-public-a</code> with SSM, then <code>curl</code> the private IP. (Adds an instance; only needed for prod-like access.)</li>
+</ol>
+
+<h3>Step H — Real-time issues you will hit (and how to fix)</h3>
+<table>
+<tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
+<tr><td>"Target instance not connected to Session Manager"</td><td>SSM endpoints not created OR instance role missing</td><td>Verify endpoints exist in $APP_A / $PUB_A, role has AmazonSSMManagedInstanceCore</td></tr>
+<tr><td>Session Manager hangs at "establishing session"</td><td>DNS hostnames not enabled on VPC</td><td><code>aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames</code></td></tr>
+<tr><td>curl http://checkip... times out</td><td>No NAT — this is expected for an app that doesn't need internet</td><td>If updates are required, add NAT in section 4</td></tr>
+<tr><td>HTTP page works via tunnel but not from another instance</td><td>SG $SG_LIN has no rule for 10.0.0.0/16</td><td><code>aws ec2 authorize-security-group-ingress --group-id $SG_LIN --protocol tcp --port 80 --cidr 10.0.0.0/16</code></td></tr>
+<tr><td>Linux instance unreachable even from inside VPC</td><td>Private RT has no IGW route, but instance is private — this is correct; just use the private IP</td><td>Test: <code>curl http://10.0.11.51/</code> from Windows SSM session</td></tr>
+<tr><td>"User data script didn't run" on Amazon Linux 2023</td><td>Missing shebang or permissions</td><td>User data must start with <code>#!/bin/bash</code> and be base64-OK</td></tr>
+</table>
+
+<h3>Step I — Clean up this lab</h3>
+<pre>aws ec2 terminate-instances --instance-ids $LIN_ID $WIN_ID
+aws ec2 wait instance-terminated --instance-ids $LIN_ID $WIN_ID
+for svc in ssm ssmmessages ec2messages; do
+  aws ec2 describe-vpc-endpoints --filters Name=service-name,Values=com.amazonaws.$AWS_REGION.$svc \
+    --query 'VpcEndpoints[].VpcEndpointId' --output text | xargs -n1 -I{} aws ec2 delete-vpc-endpoint --vpc-endpoint-id {}
+done
+aws ec2 delete-security-group --group-id $SG_LIN
+aws ec2 delete-security-group --group-id $SG_WIN
+aws ec2 disassociate-route-table --association-id $(aws ec2 describe-route-tables --route-table-ids $PUB_RT  --query 'RouteTables[].Associations[].RouteTableAssociationId' --output text)
+aws ec2 disassociate-route-table --association-id $(aws ec2 describe-route-tables --route-table-ids $PRIV_RT --query 'RouteTables[].Associations[].RouteTableAssociationId' --output text)
+aws ec2 delete-route-table --route-table-id $PUB_RT
+aws ec2 delete-route-table --route-table-id $PRIV_RT
+aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
+aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
+aws ec2 delete-subnet --subnet-id $PUB_A
+aws ec2 delete-subnet --subnet-id $APP_A
+aws ec2 delete-vpc --vpc-id $VPC_ID
+aws iam remove-role-from-instance-profile --instance-profile-name SSMProfile --role-name SSMRole
+aws iam delete-instance-profile --instance-profile-name SSMProfile
+aws iam detach-role-policy --role-name SSMRole --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+aws iam delete-role --role-name SSMRole</pre>
+
+<!-- ============================ 4 ============================ -->
+<h2 id="s4"><span class="num">4</span>NAT Gateway (and the lab)</h2>
+<h3>Concept</h3>
+<p>A <b>NAT Gateway</b> lets <b>private</b> instances start <b>outbound</b> connections (patches, package repos, third-party APIs) while remaining <b>unreachable from the internet</b>. It lives in a <b>public</b> subnet, needs an <b>Elastic IP</b>, and is <b>AZ-scoped</b> — therefore deploy <b>one per AZ</b> to avoid cross-AZ traffic and to be HA.</p>
+<h4>Real-time use cases</h4>
+<ul>
+<li>Private EC2 running <code>yum update</code> → goes through NAT.</li>
+<li>App in private subnet calling Stripe API → NAT.</li>
+<li>Container task pulling Docker image from ECR public → NAT (or use ECR VPC endpoint, free).</li>
+<li>Lambda in VPC doing outbound HTTP → NAT.</li>
+</ul>
+<h4>Architecture</h4>
+<div class="diag">   private-app (10.0.11.20)
+        |   src 10.0.11.20, dst 52.94.0.1
+        v
+   Private RT (rtb-priv-a): 0.0.0.0/0 -> nat-a
+        |
+        v
+   NAT Gateway (in lab-public-a) — uses EIP 54.10.20.40
+        |   src translated to 54.10.20.40
+        v
+   [IGW] -> Internet -> Stripe API
+        |
+        ^   return traffic (stateful, no extra route)
+        |
+   NAT -> Private RT -> private-app</div>
+
+<h4>Console</h4>
+<ol>
+<li><b>NAT gateways → Create NAT gateway</b> → name <code>lab-nat-a</code>, subnet <code>lab-public-a</code>, allocate new EIP → <b>Create</b>.</li>
+<li>Wait until <b>Status = Available</b>.</li>
+<li>Open <b>lab-priv-rt</b> → <b>Routes → Edit → Add</b> → <code>0.0.0.0/0</code> → <b>NAT gateway</b> → pick <code>lab-nat-a</code>.</li>
+</ol>
+
+<h4>CLI (per-AZ NAT)</h4>
+<pre>EIP_A=$(aws ec2 allocate-address --domain vpc --query AllocationId --output text)
+NAT_A=$(aws ec2 create-nat-gateway --subnet-id $PUB_A --allocation-id $EIP_A \
+  --tag-specifications 'ResourceType=nat-gateway,Tags=[{Key=Name,Value=lab-nat-a}]' \
+  --query NatGateway.NatGatewayId --output text)
+aws ec2 wait nat-gateway-available --nat-gateway-ids $NAT_A
+aws ec2 create-route --route-table-id $PRIV_RT --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $NAT_A
+
+# Repeat for AZ-b:
+EIP_B=$(aws ec2 allocate-address --domain vpc --query AllocationId --output text)
+NAT_B=$(aws ec2 create-nat-gateway --subnet-id $PUB_B --allocation-id $EIP_B \
+  --query NatGateway.NatGatewayId --output text)
+aws ec2 wait nat-gateway-available --nat-gateway-ids $NAT_B
+aws ec2 create-route --route-table-id $PRIV_RT_B --destination-cidr-block 0.0.0.0/0 --nat-gateway-id $NAT_B</pre>
+
+<h4>Lab: prove NAT works (same setup as IGW lab + NAT route)</h4>
+<ol>
+<li>Reuse the lab-httpd instance from IGW lab (Linux, private subnet, SSM profile).</li>
+<li>From Session Manager: <code>curl -s https://checkip.amazonaws.com</code> → should print your <b>NAT EIP</b> (not empty, not the instance private IP).</li>
+<li><b>Break it on purpose:</b> delete the NAT route: <code>aws ec2 delete-route --route-table-id $PRIV_RT --destination-cidr-block 0.0.0.0/0</code> → retry curl → should hang/timeout. Restore the route.</li>
+<li><b>Real-time issue:</b> <code>apt update</code> / <code>dnf update</code> from private EC2 in 1000 EC2 instances, all using one NAT in AZ-a → <code>ErrorPortAllocation</code> metric spikes → solution: one NAT per AZ (already done) and consider NAT instance groups or VPC endpoints.</li>
+</ol>
+
+<div class="box"><b>Cost trap (read this twice):</b> NAT Gateway ≈ <b>$0.045/hr</b> + <b>~$0.045/GB</b> processed. An unattached EIP also bills hourly. <b>Any</b> public IPv4 attached to an EC2 in a private subnet still bills even if unused. Use <b>Gateway endpoints for S3/DynamoDB</b> (free) to slash NAT data-processing costs.</div>
+
+<h4>NAT variants</h4>
+<table>
+<tr><th>Type</th><th>Use</th><th>EIP?</th></tr>
+<tr><td><b>Public NAT</b> (default)</td><td>Private instances → internet</td><td>Yes</td></tr>
+<tr><td><b>Private NAT</b></td><td>Translate between <b>overlapping</b> private networks (e.g., TGW-spoke ↔ on-prem hub)</td><td>No</td></tr>
+<tr><td><b>NAT instance</b> (legacy)</td><td>Cheap, custom routing, but you manage it</td><td>Optional</td></tr>
+</table>
+<p>Real-time case: two companies merging, both have <code>10.0.0.0/16</code> in their VPCs and on-prem. Peer the VPCs, then put a <b>private NAT</b> in front of one side to translate before the other VPC sees traffic.</p>
+
+<h4>Clean up NAT</h4>
+<pre>aws ec2 delete-nat-gateway --nat-gateway-id $NAT_A
+aws ec2 wait nat-gateway-deleted --nat-gateway-ids $NAT_A
+aws ec2 release-address --allocation-id $EIP_A
+# same for $NAT_B / $EIP_B</pre>
+
+<!-- ============================ 5 ============================ -->
+<h2 id="s5"><span class="num">5</span>Egress-Only IGW & Carrier Gateway</h2>
+<h3>Egress-Only IGW</h3>
+<p>The IPv6 equivalent of NAT: instances in a private subnet can initiate outbound IPv6, but the internet can't initiate inbound. Stateful. Free. Only works for IPv6.</p>
+<pre>EOIGW=$(aws ec2 create-egress-only-internet-gateway --vpc-id $VPC_ID \
+  --query EgressOnlyInternetGateway.EgressOnlyInternetGatewayId --output text)
+aws ec2 create-route --route-table-id $PRIV_RT --destination-ipv6-cidr-block ::/0 --egress-only-gateway-id $EOIGW</pre>
+
+<h3>Carrier Gateway</h3>
+<p>Only for <b>Wavelength Zones</b> (5G carrier edge). Allows carrier network → IGW. Know it exists; rarely built.</p>
+
+<h3>Gateway route tables (edge associations)</h3>
+<p>Attach a route table to an <b>IGW</b> or <b>VGW</b> to <b>force all inbound traffic through a firewall appliance</b> (e.g., AWS Network Firewall endpoint in a "firewall subnet"). Used in zero-trust designs.</p>
+
+<!-- ============================ 6 ============================ -->
+<h2 id="s6"><span class="num">6</span>Security Groups vs NACLs</h2>
+<table>
+<tr><th></th><th>Security Group</th><th>Network ACL</th></tr>
+<tr><td>Attached to</td><td><b>ENI</b> (instance, endpoint, LB...)</td><td><b>Subnet</b></td></tr>
+<tr><td>State</td><td><b>Stateful</b> (return traffic auto-allowed)</td><td><b>Stateless</b> (must allow ephemeral 1024-65535 for replies)</td></tr>
+<tr><td>Rules</td><td><b>Allow only</b>, all evaluated</td><td>Allow and <b>deny</b>, lowest rule number first, <b>first match wins</b></td></tr>
+<tr><td>Sources</td><td>CIDR, prefix list, <b>another SG</b></td><td>CIDR only</td></tr>
+<tr><td>Default</td><td>Deny inbound, allow outbound</td><td>Default NACL = allow all; custom NACL = deny all</td></tr>
+<tr><td>Quota</td><td>60 in / 60 out per SG, 5 SGs/ENI</td><td>20 rules per direction</td></tr>
+</table>
+<h4>Lab: layered web → app → db</h4>
+<pre>mksg(){ aws ec2 create-security-group --group-name $1 --description "$1" --vpc-id $VPC_ID --query GroupId --output text; }
+SG_WEB=$(mksg lab-web); SG_APP=$(mksg lab-app); SG_DB=$(mksg lab-db)
+aws ec2 authorize-security-group-ingress --group-id $SG_WEB --protocol tcp --port 443  --cidr 0.0.0.0/0
+aws ec2 authorize-security-group-ingress --group-id $SG_APP --protocol tcp --port 8080 --source-group $SG_WEB
+aws ec2 authorize-security-group-ingress --group-id $SG_DB  --protocol tcp --port 5432 --source-group $SG_APP</pre>
+<div class="box"><b>Pro pattern:</b> reference SGs instead of CIDRs. The rule <b>survives scale-out and IP changes</b>.</div>
+
+<h4>NACL lab: block one bad IP</h4>
+<pre>NACL=$(aws ec2 create-network-acl --vpc-id $VPC_ID --query NetworkAcl.NetworkAclId --output text)
+# 1. deny the bad guy first
+aws ec2 create-network-acl-entry --network-acl-id $NACL --ingress --rule-number 90 \
+  --protocol -1 --rule-action deny --cidr-block 203.0.113.50/32
+# 2. allow everything else
+aws ec2 create-network-acl-entry --network-acl-id $NACL --ingress --rule-number 100 \
+  --protocol tcp --port-range From=443,To=443 --rule-action allow --cidr-block 0.0.0.0/0
+# 3. allow return traffic (stateless!)
+aws ec2 create-network-acl-entry --network-acl-id $NACL --egress --rule-number 100 \
+  --protocol tcp --port-range From=1024,To=65535 --rule-action allow --cidr-block 0.0.0.0/0
+aws ec2 associate-network-acl --network-acl-id $NACL --subnet-id $APP_A</pre>
+<div class="box err"><b>Real-time gotcha:</b> forgot the egress rule → your 443 request goes out fine but the reply gets dropped at the NACL. <b>Always</b> add a wide outbound allow for ephemeral ports when using custom NACLs.</div>
+
+<!-- ============================ 7 ============================ -->
+<h2 id="s7"><span class="num">7</span>Reachability Analyzer & Flow Logs</h2>
+<h3>Flow Logs</h3>
+<pre>aws ec2 create-flow-logs --resource-type VPC --resource-ids $VPC_ID --traffic-type ALL \
+  --log-destination-type s3 --log-destination arn:aws:s3:::my-flowlog-bucket/vpc/ \
+  --max-aggregation-interval 60</pre>
+<p>Read a record: <code>version account eni src dst srcport dstport protocol packets bytes start end action log-status</code>.
+<b>ACCEPT</b> client→server but <b>no return ACCEPT</b> → usually NACL or asymmetric route. <b>REJECT</b> → SG or NACL deny.</p>
+<h3>Reachability Analyzer</h3>
+<p>Network Manager → <b>Reachability Analyzer</b> → <b>Create</b> → pick source and destination. It returns <b>Reachable / Not reachable / Reachable (with warnings)</b> and a path of hops. Best tool for "why can't instance A talk to instance B".</p>
+
+<!-- ============================ 8 ============================ -->
+<h2 id="s8"><span class="num">8</span>VPC Endpoints & PrivateLink</h2>
+<table>
+<tr><th>Type</th><th>Services</th><th>How</th><th>Cost</th></tr>
+<tr><td>Gateway endpoint</td><td>S3, DynamoDB</td><td>Route-table entry (prefix list)</td><td><b>Free</b></td></tr>
+<tr><td>Interface endpoint</td><td>Most AWS services + partner + your own</td><td>ENI in your subnet, private DNS</td><td>$/AZ-hr + $/GB</td></tr>
+<tr><td>Gateway Load Balancer endpoint</td><td>Third-party appliances</td><td>Transparent GENEVE tunnel</td><td>$/AZ-hr + $/GB</td></tr>
+</table>
+<h4>Lab: cut NAT cost with S3/DDB gateway endpoints</h4>
+<pre># S3 gateway endpoint — attach to BOTH private route tables
+aws ec2 create-vpc-endpoint --vpc-id $VPC_ID --service-name com.amazonaws.$AWS_REGION.s3 \
+  --route-table-ids $PRIV_RT $PRIV_RT_B
+# From private EC2: aws s3 ls — works without NAT, no data processing fees.
+# Endpoint policy: restrict to specific bucket
+cat > /tmp/s3-ep-policy.json &lt;&lt;'JSON'
+{ "Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:*",
+  "Resource":["arn:aws:s3:::my-bucket","arn:aws:s3:::my-bucket/*"]}] }
+JSON
+aws ec2 modify-vpc-endpoint --vpc-endpoint-id $S3_EP --policy-document file:///tmp/s3-ep-policy.json</pre>
+
+<h4>Expose your own service via PrivateLink</h4>
+<ol>
+<li>Put the service behind an <b>Network Load Balancer</b> (or GWLB).</li>
+<li><b>Endpoint services → Create</b> → select NLB → <i>acceptance required</i> → add allowed principals.</li>
+<li>Consumer creates an interface endpoint by service name; you accept the connection.</li>
+</ol>
+<p>Why it matters: consumers get a <b>private IP in their own VPC</b> with no peering, no CIDR overlap problem, no public exposure.</p>
+
+<!-- ============================ 9 ============================ -->
+<h2 id="s9"><span class="num">9</span>VPC Peering</h2>
+<pre>VPC2=$(aws ec2 create-vpc --cidr-block 10.1.0.0/16 --query Vpc.VpcId --output text)
+PCX=$(aws ec2 create-vpc-peering-connection --vpc-id $VPC_ID --peer-vpc-id $VPC2 \
+  --query VpcPeeringConnection.VpcPeeringConnectionId --output text)
+aws ec2 accept-vpc-peering-connection --vpc-peering-connection-id $PCX
+# Routes in BOTH directions (people forget the second one)
+aws ec2 create-route --route-table-id $PRIV_RT --destination-cidr-block 10.1.0.0/16 --vpc-peering-connection-id $PCX</pre>
+<ul>
+<li>Cross-account, cross-Region (inter-Region traffic is encrypted).</li>
+<li><b>Not transitive</b>; no edge-to-edge routing through the other side's IGW/NAT/VPN.</li>
+<li>SGs can reference peer-VPC groups in the same Region.</li>
+<li>Mesh of N VPCs ⇒ N(N-1)/2 peerings → that's when you switch to Transit Gateway.</li>
+</ul>
+
+<!-- ============================ 10 ============================ -->
+<h2 id="s10"><span class="num">10</span>Transit Gateway (TGW)</h2>
+<p>Regional hub router. Attach VPCs, VPNs, DX gateways, peer other TGWs. Control reachability with <b>TGW route tables</b> (<i>association</i> = which table an attachment uses; <i>propagation</i> = where its routes appear).</p>
+<pre>TGW=$(aws ec2 create-transit-gateway --description lab-tgw \
+  --options DefaultRouteTableAssociation=enable,DefaultRouteTablePropagation=enable \
+  --query TransitGateway.TransitGatewayId --output text)
+aws ec2 create-transit-gateway-vpc-attachment --transit-gateway-id $TGW --vpc-id $VPC_ID \
+  --subnet-ids $APP_A $APP_B     # one subnet per AZ you want to reach
+aws ec2 create-route --route-table-id $PRIV_RT --destination-cidr-block 10.0.0.0/8 --transit-gateway-id $TGW</pre>
+<h4>Common patterns</h4>
+<ul>
+<li><b>Flat:</b> default table → everything talks to everything.</li>
+<li><b>Isolated spokes + shared services:</b> separate prod/dev tables, both propagate into a shared-services table only.</li>
+<li><b>Centralized egress:</b> spokes send <code>0.0.0.0/0</code> to TGW; an <b>egress VPC</b> holds NAT. Enable <b>appliance mode</b> when an inspection firewall is in the path so flows stay symmetric.</li>
+</ul>
+
+<!-- ============================ 11 ============================ -->
+<h2 id="s11"><span class="num">11</span>Site-to-Site VPN & Direct Connect</h2>
+<h4>Site-to-Site VPN</h4>
+<ol>
+<li><b>Customer gateway</b>: on-prem public IP + ASN.</li>
+<li><b>Target</b>: VGW (attached to a VPC) or TGW.</li>
+<li><b>VPN connection</b>: 2 IPsec tunnels in different AZs; choose BGP or static.</li>
+<li>Apply device config on-prem; enable route propagation on the VPC route table.</li>
+</ol>
+<pre>CGW=$(aws ec2 create-customer-gateway --type ipsec.1 --public-ip 203.0.113.12 --bgp-asn 65000 \
+  --query CustomerGateway.CustomerGatewayId --output text)
+VGW=$(aws ec2 create-vpn-gateway --type ipsec.1 --query VpnGateway.VpnGatewayId --output text)
+aws ec2 attach-vpn-gateway --vpn-gateway-id $VGW --vpc-id $VPC_ID
+aws ec2 create-vpn-connection --type ipsec.1 --customer-gateway-id $CGW --vpn-gateway-id $VGW \
+  --options StaticRoutesOnly=false
+aws ec2 enable-vgw-route-propagation --route-table-id $PRIV_RT --gateway-id $VGW</pre>
+<p>Each tunnel tops at ~1.25 Gbps. For more bandwidth: TGW with ECMP across many tunnels, or Direct Connect (1/10/100 Gbps private fiber). Common design: <b>DX primary + VPN encrypted backup</b>.</p>
+<div class="box"><b>Real-time issue:</b> tunnel shows UP in console but no traffic flows → check (a) on-prem device ACLs, (b) BGP neighbor state, (c) MTU (default 1500, set to 1436 for IPsec), (d) asymmetric routing where traffic returns via the second tunnel.</div>
+
+<!-- ============================ 12 ============================ -->
+<h2 id="s12"><span class="num">12</span>Client VPN & Verified Access</h2>
+<h4>Client VPN</h4>
+<p>Managed OpenVPN endpoint for people. Needs a server cert in ACM, auth (mTLS / AD / SAML), a client CIDR (≥ /22, no overlap), target subnet association and authorization rules. Create in <b>Client VPN endpoints</b> and test with the AWS VPN Client.</p>
+<h4>Verified Access</h4>
+<p>Zero-trust access to internal HTTP apps without VPN. Build with an instance, a trust provider (IAM Identity Center or OIDC), a group with policy, and an endpoint pointing at your internal ALB/NLB.</p>
+
+<!-- ============================ 13 ============================ -->
+<h2 id="s13"><span class="num">13</span>Network Firewall & DNS Firewall</h2>
+<h4>Route 53 Resolver DNS Firewall</h4>
+<ol>
+<li><b>Domain list</b>: e.g., <code>*.malware.example</code> or AWS-managed lists.</li>
+<li><b>Rule group</b>: BLOCK (NODATA / NXDOMAIN / override), ALERT, or ALLOW with priority.</li>
+<li><b>Associate</b> the rule group with the VPC. Test: <code>dig example.com @10.0.0.2</code>.</li>
+</ol>
+<h4>AWS Network Firewall</h4>
+<p>Managed stateful + stateless inspection. Build order:</p>
+<ol>
+<li><b>Rule groups</b>: stateless 5-tuple, stateful 5-tuple, domain list, or Suricata.</li>
+<li><b>Firewall policy</b>: ordered references to rule groups + default actions.</li>
+<li><b>Firewall</b>: choose VPC and a dedicated <b>firewall subnet</b> per AZ (a /28 is enough).</li>
+<li><b>Routing pattern:</b> IGW edge route table sends inbound to the firewall endpoint; workload subnets send <code>0.0.0.0/0</code> to the firewall endpoint; firewall subnets send onward to IGW or NAT.</li>
+<li>Enable alert + flow logs to CloudWatch Logs or S3.</li>
+</ol>
+<div class="box"><b>Cost:</b> ~$0.40/endpoint-hour/AZ + per-GB. Build → test → delete in under an hour.</div>
+
+<!-- ============================ 14 ============================ -->
+<h2 id="s14"><span class="num">14</span>IPAM, VPC Lattice, Cloud WAN</h2>
+<table>
+<tr><th>Service</th><th>When</th><th>First steps</th></tr>
+<tr><td><b>IPAM</b></td><td>Many accounts/VPCs, non-overlapping CIDR governance</td><td>Create IPAM, top-level pool, regional pools, share via RAM; allocate VPCs from a pool</td></tr>
+<tr><td><b>Verified Access</b></td><td>Zero-trust access to internal apps, no VPN</td><td>Instance, trust provider, group + policy, endpoint to ALB/NLB</td></tr>
+<tr><td><b>VPC Lattice</b></td><td>Service-to-service L7 across VPCs and accounts</td><td>Service network, service w/ listener + target group, associate VPCs, auth policy</td></tr>
+<tr><td><b>Cloud WAN</b></td><td>Global network across Regions and on-prem with one policy</td><td>Core network, segments, attachments, JSON network policy in Network Manager</td></tr>
+</table>
+
+<!-- ============================ 15 ============================ -->
+<h2 id="s15"><span class="num">15</span>IPv6, DHCP, Prefix Lists</h2>
+<ul>
+<li><b>IPv6:</b> <code>associate-vpc-cidr-block --amazon-provided-ipv6-cidr-block</code> → /56 to the VPC, /64 to each subnet. All IPv6 in AWS is globally routable. Use an <b>egress-only IGW</b> for private outbound-only behavior.</li>
+<li><b>DHCP option sets</b> are <b>immutable</b>; create a new one (custom domain, DNS, NTP) and associate. Default uses <b>AmazonProvidedDNS</b> (VPC base+2, e.g. <code>10.0.0.2</code>).</li>
+<li><b>Managed prefix lists</b>: named CIDR sets reused in RTs and SGs. Update once, every rule using it follows. AWS publishes managed lists for S3 and CloudFront.</li>
+</ul>
+<pre>PL=$(aws ec2 create-managed-prefix-list --prefix-list-name office-ips --address-family IPv4 --max-entries 10 \
+  --entries Cidr=198.51.100.0/24,Description=hq --query PrefixList.PrefixListId --output text)
+aws ec2 authorize-security-group-ingress --group-id $SG_WEB --ip-permissions \
+  "IpProtocol=tcp,FromPort=22,ToPort=22,PrefixListIds=[{PrefixListId=$PL}]"</pre>
+
+<!-- ============================ 16 ============================ -->
+<h2 id="s16"><span class="num">16</span>Observability & Troubleshooting</h2>
+<h3>Troubleshooting playbook (memorize the order)</h3>
+<table>
+<tr><th>Symptom</th><th>Check in this order</th></tr>
+<tr><td>Can't reach instance from internet</td><td>Public IP or EIP, subnet route to IGW, SG inbound, NACL both directions, OS firewall, app listening</td></tr>
+<tr><td>Private instance has no internet</td><td>NAT state <i>available</i>, NAT in public subnet with IGW route, private RT has <code>0.0.0.0/0 -&gt; NAT</code>, outbound SG/NACL</td></tr>
+<tr><td>Peering ping fails</td><td>Route in BOTH VPCs, SG allows peer CIDR, NACLs, DNS resolution option, overlapping CIDRs</td></tr>
+<tr><td>S3 access fails via endpoint</td><td>Endpoint on the right RT, endpoint policy, bucket policy conditions (<code>aws:sourceVpce</code>)</td></tr>
+<tr><td>Interface endpoint name resolves to public IP</td><td>Private DNS enabled on endpoint, <b>and</b> DNS hostnames + DNS resolution enabled on VPC</td></tr>
+<tr><td>VPN up but no traffic</td><td>Route propagation, on-prem routes &amp; BGP, SG, asymmetric path, MTU</td></tr>
+<tr><td>Random timeouts through firewall</td><td>Asymmetric routing, TGW appliance mode off, stateless rules missing return flow</td></tr>
+</table>
+<p>Always bring evidence: <b>Flow Logs</b> for accept/reject, <b>Reachability Analyzer</b> for config, <b>packet capture</b> (SSM + <code>tcpdump</code>) for truth.</p>
+<h3>Other tools</h3>
+<ul>
+<li><b>Network Access Analyzer</b>: scan VPC for unintended internet exposure (open SG 0.0.0.0/0, public DB).</li>
+<li><b>CloudTrail</b>: who changed the route table?</li>
+<li><b>CloudWatch NAT metrics</b>: <code>ErrorPortAllocation</code>, <code>BytesOutToDestination</code>, <code>PacketsDropCount</code>.</li>
+<li><b>Traffic Mirroring</b>: copy packets to an IDS (Nitro instances only as source).</li>
+</ul>
+
+<!-- ============================ 17 ============================ -->
+<h2 id="s17"><span class="num">17</span>Cleanup, IaC & Interview Drill</h2>
+<h4>Delete in this order (reverse dependencies)</h4>
+<ol>
+<li>Instances → endpoints → firewalls → VPN → TGW attachments (wait) → TGW.</li>
+<li>NAT gateways (wait <i>deleted</i>) → release EIPs.</li>
+<li>Peering connections → custom routes → disassociate &amp; delete route tables.</li>
+<li>Detach &amp; delete IGW → delete subnets, SGs, NACLs → delete the VPC.</li>
+</ol>
+<pre>aws ec2 delete-nat-gateway --nat-gateway-id $NAT_A
+aws ec2 release-address    --allocation-id    $EIP_A
+aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
+aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
+aws ec2 delete-vpc --vpc-id $VPC_ID</pre>
+
+<h4>Interview questions — answer cold</h4>
+<ol>
+<li>Why is a /28 subnet only 11 usable IPs?</li>
+<li>What actually makes a subnet public?</li>
+<li>SG vs NACL — five differences.</li>
+<li>Why one NAT gateway per AZ?</li>
+<li>Why does peering fail with overlapping CIDRs? Name three ways around it.</li>
+<li>Gateway vs Interface endpoint: routing, cost, DNS.</li>
+<li>Design hub-and-spoke for 40 VPCs with centralized egress and inspection.</li>
+<li>Trace a packet from private instance → S3 with and without a gateway endpoint.</li>
+<li>How would you give a private EC2 outbound internet without public IP, in one AZ, with HA?</li>
+<li>Your VPN tunnel is up but ping fails. Walk through the diagnosis.</li>
+</ol>
+
+<div class="box ok"><b>Next:</b> redo the labs with <b>Terraform</b> or <b>CloudFormation</b>, then build a 3-tier app (ALB + ASG + RDS Multi-AZ). IaC is the line between "knows VPC" and "runs VPC in production".</div>
+
+</main>
+
+<script>
+document.querySelectorAll('pre').forEach(function(p){
+  var b=document.createElement('button');b.className='cp';b.textContent='Copy';
+  b.onclick=function(){var t=p.innerText.replace(/^Copy\n?/,'');
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject())
+      .then(function(){b.textContent='Copied'}).catch(function(){b.textContent='Select & copy'});
+    setTimeout(function(){b.textContent='Copy'},1500)};
+  p.appendChild(b);
+});
+</script>
+</body>
+</html>
