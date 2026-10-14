@@ -80,6 +80,7 @@ th{background:var(--panel);font-weight:600}
 <a href="#s2">2. Subnets Deep-Dive</a>
 <div class="group">Internet Layer</div>
 <a class="t1" href="#s3">3. Internet Gateway (IGW)</a>
+<a class="t1" href="#lab-igw">▸ IGW Hands-on Lab (Windows + httpd)</a>
 <a class="t2" href="#s4">4. NAT Gateway</a>
 <a class="t3" href="#s5">5. Egress-Only IGW & Carrier GW</a>
 <div class="group">Security</div>
@@ -104,6 +105,19 @@ th{background:var(--panel);font-weight:600}
 <p class="lead">Every topic follows the same loop: <span class="kw">Concept</span> → <span class="kw">Real-time use cases</span> → <span class="kw">Console demo</span> → <span class="kw">CLI lab</span> → <span class="kw">Common issues</span> → <span class="kw">Clean-up</span>. Region: <code>us-east-1</code>. Prices and quotas are approximate — verify on AWS docs before leaving anything running.</p>
 
 <div class="box"><b>One-time setup:</b> use an IAM user/role with admin rights in a sandbox account. Install <code>AWS CLI v2</code>, run <code>aws configure</code>, set a billing alarm at $5. Export shared variables at the top of every shell: <code>export AWS_REGION=us-east-1 VPC_ID=... CIDR=10.0.0.0/16</code>.</div>
+
+<div class="box err">
+<b>Sandbox / lab-account limits to know before you copy-paste:</b>
+<ul>
+<li><b>EC2 instance types allowed:</b> <code>t2.nano/micro/small/medium</code>, <code>t3.nano/micro/small/medium</code> only.</li>
+<li><b>Max 2 vCPU and 4 GiB RAM per instance.</b> That means: use <code>t3.small</code> (2 vCPU / 2 GiB) for Linux/httpd, and <code>t3.medium</code> only if you really need Windows — Windows is RAM-hungry; if your account enforces the 4 GiB cap strictly, use a Linux bastion for the demo and skip the Windows instance (see Step E2 below).</li>
+<li><b>Max 10 concurrent instances, 10 vCPU, 20 GiB total.</b> Stop/terminate anything you don't need.</li>
+<li><b>Storage:</b> gp2/gp3 only, max 30 GB per volume. Use <code>--volume-type gp3 --volume-size 20</code>.</li>
+<li><b>T-series CPU credit mode must be <code>standard</code>.</b> Don't pass <code>--credit-specification Unlimited</code>.</li>
+<li><b>No Spot, no Dedicated Hosts, no Capacity Reservations, no FSRs, no Traffic Mirroring, no VPN/TGW/VPN-Connections.</b> The lab excludes those sections on a sandbox.</li>
+<li><b>Instance shutdown behavior = terminate.</b> Don't expect a stopped instance to come back — terminate removes it.</li>
+</ul>
+</div>
 
 <!-- ============================ 0 ============================ -->
 <h2 id="s0"><span class="num">0</span>Mental Model</h2>
@@ -254,18 +268,23 @@ aws ec2 associate-route-table --route-table-id $PRIV_RT_B --subnet-id $DB_B</pre
 <h2 id="lab-igw" style="border-top-color:var(--topic1)">Lab: End-to-end Internet Gateway demo</h2>
 <p>This is the lab you asked for: create a VPC, subnets, IGW, route table. Launch a <b>Windows instance</b> accessed <b>privately</b> via Session Manager, and a <b>Linux instance</b> running <b>Apache (httpd)</b> accessed <b>privately</b>. Then break it on purpose.</p>
 
-<h3>Step A — Bootstrap environment</h3>
+<h3>Step A — Bootstrap (VPC, subnets in DIFFERENT AZs, IGW, route tables)</h3>
 <pre>export AWS_REGION=us-east-1
-export VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 \
+export AWS_PAGER=""
+
+VPC_ID=$(aws ec2 create-vpc --cidr-block 10.0.0.0/16 \
   --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=lab-vpc}]' \
   --query Vpc.VpcId --output text)
 aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames
 
-PUB_A=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.1.0/24 --availability-zone us-east-1a \
-  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=lab-public-a}]' --query Subnet.SubnetId --output text)
+# Public subnet in us-east-1b, private (app) subnet in us-east-1a
+# Using two AZs is the real production pattern AND it fixes DuplicateSubnetsInSameZone
+# when we attach SSM VPC endpoints in Step C.
+PUB_B=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.2.0/24 --availability-zone us-east-1b \
+  --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=lab-public-b}]' --query Subnet.SubnetId --output text)
 APP_A=$(aws ec2 create-subnet --vpc-id $VPC_ID --cidr-block 10.0.11.0/24 --availability-zone us-east-1a \
   --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=lab-app-a}]'  --query Subnet.SubnetId --output text)
-aws ec2 modify-subnet-attribute --subnet-id $PUB_A --map-public-ip-on-launch
+aws ec2 modify-subnet-attribute --subnet-id $PUB_B --map-public-ip-on-launch
 
 IGW_ID=$(aws ec2 create-internet-gateway --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=lab-igw}]' \
   --query InternetGateway.InternetGatewayId --output text)
@@ -275,12 +294,13 @@ PUB_RT=$(aws ec2 create-route-table --vpc-id $VPC_ID \
   --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=lab-public-rt}]' \
   --query RouteTable.RouteTableId --output text)
 aws ec2 create-route --route-table-id $PUB_RT --destination-cidr-block 0.0.0.0/0 --gateway-id $IGW_ID
-aws ec2 associate-route-table --route-table-id $PUB_RT --subnet-id $PUB_A
+aws ec2 associate-route-table --route-table-id $PUB_RT --subnet-id $PUB_B
 
 PRIV_RT=$(aws ec2 create-route-table --vpc-id $VPC_ID \
   --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=lab-priv-rt}]' \
   --query RouteTable.RouteTableId --output text)
 aws ec2 associate-route-table --route-table-id $PRIV_RT --subnet-id $APP_A</pre>
+<div class="box ok"><b>Verify topology:</b> <code>aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID --query 'Subnets[].[SubnetId,AvailabilityZone,CidrBlock,Tags[?Key==`Name`].Value|[0]]' --output table</code> — confirm one is in <code>us-east-1a</code>, the other in <code>us-east-1b</code>.</div>
 
 <h3>Step B — Security groups (one for Windows RDP-via-SSM, one for Linux HTTP)</h3>
 <pre>SG_WIN=$(aws ec2 create-security-group --group-name lab-win --description "windows" --vpc-id $VPC_ID --query GroupId --output text)
@@ -298,29 +318,38 @@ aws ec2 authorize-security-group-ingress --group-id $SG_LIN --protocol tcp --por
 JSON
 aws iam create-role --role-name SSMRole --assume-role-policy-document file:///tmp/ssm-trust.json
 aws iam attach-role-policy --role-name SSMRole --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-aws iam create-instance-profile --instance-profile-name SSMProfile
+aws iam create-instance-profile --instance-profile-name SSMProfile || true   # "already exists" is OK
 aws iam add-role-to-instance-profile --instance-profile-name SSMProfile --role-name SSMRole
 
-# VPC endpoints for SSM (so private instance can reach SSM without NAT)
+# VPC endpoints for SSM, attached ONLY to the PUBLIC subnet ($PUB_B).
+# One subnet per AZ per endpoint ENI — that is the rule that triggers
+# DuplicateSubnetsInSameZone when violated. Single-subnet attachment is correct.
 for svc in ssm ssmmessages ec2messages; do
   aws ec2 create-vpc-endpoint --vpc-id $VPC_ID --vpc-endpoint-type Interface \
-    --service-name com.amazonaws.$AWS_REGION.$svc --subnet-ids $APP_A $PUB_A \
-    --security-group-ids $SG_LIN --private-dns-enabled
+    --service-name com.amazonaws.$AWS_REGION.$svc \
+    --subnet-ids $PUB_B \
+    --security-group-ids $SG_LIN \
+    --private-dns-enabled
 done</pre>
+<div class="box err"><b>If you ever get <code>DuplicateSubnetsInSameZone</code> again, the cause is exactly this:</b> you passed two subnets that are both in the same AZ (e.g. <code>--subnet-ids $APP_A $PUB_A</code> with both in <code>us-east-1a</code>). A VPC endpoint ENI is <b>one per AZ</b>. Fix: either drop one subnet, or use subnets from two different AZs.</div>
 
 <h3>Step D — Launch Linux (httpd) in private subnet</h3>
 <pre>AMI_LIN=$(aws ssm get-parameter --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64 \
   --query Parameter.Value --output text)
-LIN_ID=$(aws ec2 run-instances --image-id $AMI_LIN --instance-type t3.micro \
+LIN_ID=$(aws ec2 run-instances --image-id $AMI_LIN --instance-type t3.small \
+  --cpu-options CoreCount=2,ThreadsPerCore=1 \
   --subnet-id $APP_A --security-group-ids $SG_LIN \
   --iam-instance-profile Name=SSMProfile \
+  --credit-specification CpuCredits=standard \
+  --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeType=gp3,VolumeSize=20,DeleteOnTermination=true}' \
   --user-data '#!/bin/bash
 dnf install -y httpd -q
 echo "&lt;h1&gt;Hello from $(hostname -f) in $(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)&lt;/h1&gt;" > /var/www/html/index.html
 systemctl enable --now httpd' \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=lab-httpd}]' \
   --query Instances[0].InstanceId --output text)
-echo "Linux instance: $LIN_ID — private IP only"</pre>
+echo "Linux instance: $LIN_ID"
+<div class="box"><b>Sandbox-safe choices:</b> <code>t3.small</code> (2 vCPU / 2 GiB) + <code>gp3 / 20 GiB</code> + <code>CpuCredits=standard</code>. All inside the 2 vCPU / 4 GiB / 30 GiB / gp2-or-gp3 sandbox limits. If <code>t3.small</code> is still rejected, fall back to <code>t3.micro</code>.</div></pre>
 
 <h3>Step E — Launch Windows in private subnet</h3>
 <pre>AMI_WIN=$(aws ssm get-parameter --name /aws/service/ami-windows-latest/Windows_Server-2022-English-Full-Base \
@@ -328,9 +357,20 @@ echo "Linux instance: $LIN_ID — private IP only"</pre>
 WIN_ID=$(aws ec2 run-instances --image-id $AMI_WIN --instance-type t3.medium \
   --subnet-id $APP_A --security-group-ids $SG_WIN \
   --iam-instance-profile Name=SSMProfile \
+  --credit-specification CpuCredits=standard \
+  --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeType=gp3,VolumeSize=30,DeleteOnTermination=true}' \
   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=lab-win}]' \
   --query Instances[0].InstanceId --output text)
-echo "Windows instance: $WIN_ID"</pre>
+echo "Windows instance: $WIN_ID"
+
+# If your sandbox rejects t3.medium, run this Linux fallback instead (uncomment):
+# AMI_UBUNTU=$(aws ssm get-parameter --name /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id --query Parameter.Value --output text)
+# WIN_ID=$(aws ec2 run-instances --image-id $AMI_UBUNTU --instance-type t3.small \
+#   --subnet-id $APP_A --security-group-ids $SG_WIN --iam-instance-profile Name=SSMProfile \
+#   --credit-specification CpuCredits=standard \
+#   --block-device-mappings 'DeviceName=/dev/sda1,Ebs={VolumeType=gp3,VolumeSize=20,DeleteOnTermination=true}' \
+#   --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=lab-admin}]' \
+#   --query Instances[0].InstanceId --output text)</pre>
 
 <h3>Step F — Connect privately with Session Manager</h3>
 <ol>
@@ -363,13 +403,13 @@ echo "Windows instance: $WIN_ID"</pre>
 <code>aws ssm start-session --target $LIN_ID --document-name AWS-StartPortForwardingSession --parameters '{"portNumber":["80"],"localPortNumber":["8080"]}'</code><br>
 Now open <code>http://localhost:8080</code> in your browser → see "Hello from ip-10-0-11-51..."</li>
 <li><b>Session Manager → tunnel to port 80</b> via console: <b>Connect → Session Manager → Tunnel</b> option (newer console).</li>
-<li><b>Open a bastion/jump host</b> in <code>lab-public-a</code> with SSM, then <code>curl</code> the private IP. (Adds an instance; only needed for prod-like access.)</li>
+<li><b>Open a bastion/jump host</b> in <code>lab-public-b</code> with SSM, then <code>curl</code> the private IP. (Adds an instance; only needed for prod-like access.)</li>
 </ol>
 
 <h3>Step H — Real-time issues you will hit (and how to fix)</h3>
 <table>
 <tr><th>Symptom</th><th>Root cause</th><th>Fix</th></tr>
-<tr><td>"Target instance not connected to Session Manager"</td><td>SSM endpoints not created OR instance role missing</td><td>Verify endpoints exist in $APP_A / $PUB_A, role has AmazonSSMManagedInstanceCore</td></tr>
+<tr><td>"Target instance not connected to Session Manager"</td><td>SSM endpoints not created OR instance role missing</td><td>Verify endpoints exist in $PUB_B (one subnet per AZ), role has AmazonSSMManagedInstanceCore</td></tr>
 <tr><td>Session Manager hangs at "establishing session"</td><td>DNS hostnames not enabled on VPC</td><td><code>aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames</code></td></tr>
 <tr><td>curl http://checkip... times out</td><td>No NAT — this is expected for an app that doesn't need internet</td><td>If updates are required, add NAT in section 4</td></tr>
 <tr><td>HTTP page works via tunnel but not from another instance</td><td>SG $SG_LIN has no rule for 10.0.0.0/16</td><td><code>aws ec2 authorize-security-group-ingress --group-id $SG_LIN --protocol tcp --port 80 --cidr 10.0.0.0/16</code></td></tr>
@@ -378,30 +418,30 @@ Now open <code>http://localhost:8080</code> in your browser → see "Hello from 
 </table>
 
 <h3>Step I — Clean up this lab</h3>
-<pre>aws ec2 terminate-instances --instance-ids $LIN_ID $WIN_ID
+<pre>aws ec2 terminate-instances --instance-ids $LIN_ID $WIN_ID 2>/dev/null
 aws ec2 wait instance-terminated --instance-ids $LIN_ID $WIN_ID
 for svc in ssm ssmmessages ec2messages; do
-  aws ec2 describe-vpc-endpoints --filters Name=service-name,Values=com.amazonaws.$AWS_REGION.$svc \
-    --query 'VpcEndpoints[].VpcEndpointId' --output text | xargs -n1 -I{} aws ec2 delete-vpc-endpoint --vpc-endpoint-id {}
+  EP=$(aws ec2 describe-vpc-endpoints --filters Name=service-name,Values=com.amazonaws.$AWS_REGION.$svc \
+       --query 'VpcEndpoints[?VpcId==`'$VPC_ID'`].VpcEndpointId' --output text)
+  [ -n "$EP" ] &amp;&amp; aws ec2 delete-vpc-endpoint --vpc-endpoint-id $EP
 done
-aws ec2 delete-security-group --group-id $SG_LIN
-aws ec2 delete-security-group --group-id $SG_WIN
-aws ec2 disassociate-route-table --association-id $(aws ec2 describe-route-tables --route-table-ids $PUB_RT  --query 'RouteTables[].Associations[].RouteTableAssociationId' --output text)
-aws ec2 disassociate-route-table --association-id $(aws ec2 describe-route-tables --route-table-ids $PRIV_RT --query 'RouteTables[].Associations[].RouteTableAssociationId' --output text)
-aws ec2 delete-route-table --route-table-id $PUB_RT
-aws ec2 delete-route-table --route-table-id $PRIV_RT
+aws ec2 delete-security-group --group-id $SG_LIN 2>/dev/null
+aws ec2 delete-security-group --group-id $SG_WIN 2>/dev/null
+for rt in $PUB_RT $PRIV_RT; do
+  aws ec2 describe-route-tables --route-table-ids $rt \
+    --query 'RouteTables[].Associations[].RouteTableAssociationId' --output text \
+    | xargs -r -n1 aws ec2 disassociate-route-table --association-id
+  aws ec2 delete-route-table --route-table-id $rt
+done
 aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID --vpc-id $VPC_ID
 aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID
-aws ec2 delete-subnet --subnet-id $PUB_A
+aws ec2 delete-subnet --subnet-id $PUB_B
 aws ec2 delete-subnet --subnet-id $APP_A
 aws ec2 delete-vpc --vpc-id $VPC_ID
-aws iam remove-role-from-instance-profile --instance-profile-name SSMProfile --role-name SSMRole
-aws iam delete-instance-profile --instance-profile-name SSMProfile
-aws iam detach-role-policy --role-name SSMRole --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-aws iam delete-role --role-name SSMRole</pre>
-
-<!-- ============================ 4 ============================ -->
-<h2 id="s4"><span class="num">4</span>NAT Gateway (and the lab)</h2>
+aws iam remove-role-from-instance-profile --instance-profile-name SSMProfile --role-name SSMRole 2>/dev/null
+aws iam delete-instance-profile --instance-profile-name SSMProfile 2>/dev/null
+aws iam detach-role-policy --role-name SSMRole --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore 2>/dev/null
+aws iam delete-role --role-name SSMRole 2>/dev/null</pre>
 <h3>Concept</h3>
 <p>A <b>NAT Gateway</b> lets <b>private</b> instances start <b>outbound</b> connections (patches, package repos, third-party APIs) while remaining <b>unreachable from the internet</b>. It lives in a <b>public</b> subnet, needs an <b>Elastic IP</b>, and is <b>AZ-scoped</b> — therefore deploy <b>one per AZ</b> to avoid cross-AZ traffic and to be HA.</p>
 <h4>Real-time use cases</h4>
